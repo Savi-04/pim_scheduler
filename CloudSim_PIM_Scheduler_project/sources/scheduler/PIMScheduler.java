@@ -29,14 +29,7 @@ public class PIMScheduler {
         return categorized;
     }
 
-    /**
-     * Classifies job based on RAM-to-Length ratio and deadline.
-     * Memory-intensive jobs with relaxed deadlines are assigned to PIM.
-     * @param cloudlet the cloudlet (job) to classify
-     * @param ramRequired RAM demand in MB
-     * @param deadline SLA deadline in seconds
-     * @return "PIM" or "CPU" depending on classification
-     */
+    
    
     
     public static String classifyJob(Cloudlet cloudlet, int ramRequired, double deadline) {
@@ -51,7 +44,7 @@ public class PIMScheduler {
         Log.printLine("RAM/Length Ratio: " + ratio);
         Log.printLine("Deadline: " + deadline + " seconds");
 
-        // Heuristic: RAM-heavy and relaxed deadline jobs go to PIM
+        // RAM-heavy and relaxed deadline jobs go to PIM
         
         
         
@@ -67,9 +60,9 @@ public class PIMScheduler {
     }
 
     
-    /*
-     * A wrapper to hold a cloudlet with profiling metadata.
-     */
+    
+    // A wrapper to hold a cloudlet with profiling metadata.
+     
     
     
     
