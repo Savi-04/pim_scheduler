@@ -7,12 +7,7 @@ import java.util.*;
 
 public class PIMScheduler {
 
-    /**
-     * Categorizes VMs into CPU or PIM based on their MIPS.
-     * CPU VMs have MIPS >= 9000; others are PIM.
-     * @param vmlist list of all available VMs
-     * @return map with keys "CPU" and "PIM" mapped to VM lists
-     */
+   
     public static Map<String, List<Vm>> categorizeVMsByHost(List<Vm> vmlist) {
         Map<String, List<Vm>> categorized = new HashMap<>();
         categorized.put("CPU", new ArrayList<>());
