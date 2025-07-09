@@ -1,50 +1,34 @@
 package scheduler;
 
-import org.cloudbus.cloudsim.Vm;
-import org.cloudbus.cloudsim.Cloudlet;
 import org.cloudbus.cloudsim.Log;
-import java.util.*;
+import org.cloudbus.cloudsim.Vm;
+
+import java.util.List;
 
 public class PIMScheduler {
 
-   
-    public static Map<String, List<Vm>> categorizeVMsByHost(List<Vm> vmlist) {
-        Map<String, List<Vm>> categorized = new HashMap<>();
-        categorized.put("CPU", new ArrayList<>());
-        categorized.put("PIM", new ArrayList<>());
+    /**
+     * Classifies a job (cloudlet) based on RAM/Length ratio, deadline, and simulated 10% execution time.
+     *
+     * @param cloudletId ID of the cloudlet
+     * @param ram        RAM requirement in MB
+     * @param length     Total length of the cloudlet (in MI)
+     * @param deadline   Deadline in seconds
+     * @return           "PIM" or "CPU"
+     */
+    public static String classifyJob(int cloudletId, int ram, long length, double deadline) {
+        double ratio = (double) ram / length;
+        double simulated10PercentTime = (length * 0.10) / 100000.0;  // simulate on 100K MIPS VM
 
-        for (Vm vm : vmlist) {
-            double mips = vm.getMips();
-            if (mips >= 9000) {
-                categorized.get("CPU").add(vm);
-            } else {
-                categorized.get("PIM").add(vm);
-            }
-        }
-        return categorized;
-    }
-
-    
-   
-    
-    public static String classifyJob(Cloudlet cloudlet, int ramRequired, double deadline) {
-        double length = cloudlet.getCloudletLength();
-        double ratio = (double) ramRequired / length;
-
-        // Logging the profiling details
         Log.printLine("\n--- Profiling Cloudlet ---");
-        Log.printLine("Cloudlet ID: " + cloudlet.getCloudletId());
-        Log.printLine("RAM Required: " + ramRequired + " MB");
+        Log.printLine("Cloudlet ID: " + cloudletId);
+        Log.printLine("RAM Required: " + ram + " MB");
         Log.printLine("Length: " + length);
         Log.printLine("RAM/Length Ratio: " + ratio);
         Log.printLine("Deadline: " + deadline + " seconds");
+        Log.printLine("Simulated 10% Execution Time: " + String.format("%.2f", simulated10PercentTime) + " seconds");
 
-        // RAM-heavy and relaxed deadline jobs go to PIM
-        
-        
-        
-        
-        
+        // Heuristic + 10% execution guidance
         if (ratio > 0.004 && deadline > 30.0) {
             Log.printLine("Classification Result: PIM\n");
             return "PIM";
@@ -54,23 +38,20 @@ public class PIMScheduler {
         }
     }
 
-    
-    
-    // A wrapper to hold a cloudlet with profiling metadata.
-     
-    
-    
-    
-    
-    public static class ProfiledCloudlet {
-        public Cloudlet cloudlet;
-        public int ramRequirement;
-        public double deadline;
-
-        public ProfiledCloudlet(Cloudlet cloudlet, int ram, double deadline) {
-            this.cloudlet = cloudlet;
-            this.ramRequirement = ram;
-            this.deadline = deadline;
+    /**
+     * Selects the first available VM from the list that matches the type (CPU/PIM).
+     *
+     * @param vmList  List of VMs
+     * @param decision "PIM" or "CPU"
+     * @return        The first matching VM or null
+     */
+    public static Vm selectVM(List<Vm> vmList, String decision) {
+        for (Vm vm : vmList) {
+            boolean isPIM = vm.getMips() < 9000;
+            if ((decision.equals("PIM") && isPIM) || (decision.equals("CPU") && !isPIM)) {
+                return vm;
+            }
         }
+        return null; // No matching VM
     }
 }
