@@ -4,8 +4,17 @@ import org.cloudbus.cloudsim.Log;
 import org.cloudbus.cloudsim.Vm;
 
 import java.util.List;
+import java.util.LinkedList;
+import java.util.Queue;
 
 public class PIMScheduler {
+
+    private static double threshold = 0.004;
+    private static final double MIN_THRESHOLD = 0.002;
+    private static final double MAX_THRESHOLD = 0.01;
+    private static final double ADJUST_STEP = 0.0005;
+    private static final int ERROR_WINDOW = 10;
+    private static Queue<Double> recentErrors = new LinkedList<>();
 
     /**
      * Classifies a job (cloudlet) based on RAM/Length ratio, deadline, and simulated 10% execution time.
@@ -29,7 +38,7 @@ public class PIMScheduler {
         Log.printLine("Simulated 10% Execution Time: " + String.format("%.2f", simulated10PercentTime) + " seconds");
 
         // Heuristic + 10% execution guidance
-        if (ratio > 0.004 && deadline > 30.0) {
+        if (ratio > threshold && deadline > 30.0) {
             Log.printLine("Classification Result: PIM\n");
             return "PIM";
         } else {
@@ -53,5 +62,27 @@ public class PIMScheduler {
             }
         }
         return null; // No matching VM
+    }
+
+    public static void updateThreshold(double actualTime, double predictedTime) {
+        double error = Math.abs(actualTime - predictedTime) / actualTime;
+        recentErrors.add(error);
+        if (recentErrors.size() > ERROR_WINDOW) {
+            recentErrors.poll(); // remove oldest
+        }
+
+        double sum = 0;
+        for (double e : recentErrors) {
+            sum += e;
+        }
+        double avgError = sum / recentErrors.size();
+
+        if (avgError > 0.2 && threshold < MAX_THRESHOLD) {
+            threshold += ADJUST_STEP;
+            Log.printLine("Threshold increased to: " + threshold);
+        } else if (avgError < 0.05 && threshold > MIN_THRESHOLD) {
+            threshold -= ADJUST_STEP;
+            Log.printLine("Threshold decreased to: " + threshold);
+        }
     }
 }
