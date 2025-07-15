@@ -112,6 +112,14 @@ public class CloudSimExample1 {
                         dft.format(c.getExecStartTime()) + indent + indent + dft.format(c.getFinishTime()));
             }
             Log.printLine();
+
+            double actualTime = c.getActualCPUTime();
+            int id = c.getCloudletId();
+            double predictedTime = PIMScheduler.getPredictedTime(id);
+
+            if (predictedTime > 0) {
+                PIMScheduler.updateThreshold(actualTime, predictedTime);
+            }
         }
     }
 }
