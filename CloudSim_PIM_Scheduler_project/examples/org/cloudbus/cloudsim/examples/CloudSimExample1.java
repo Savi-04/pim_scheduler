@@ -8,6 +8,7 @@ import pimsim.HeterogeneousHostConfig;
 
 import java.text.DecimalFormat;
 import java.util.*;
+import java.io.*;
 
 public class CloudSimExample1 {
 
@@ -41,15 +42,20 @@ public class CloudSimExample1 {
             List<Cloudlet> cloudletList = new ArrayList<>();
             UtilizationModel utilization = new UtilizationModelFull();
 
-            // Metadata: RAM requirement and deadline
-            Map<Integer, Integer> ramMap = Map.of(0, 2000, 1, 1000, 2, 256);
-            Map<Integer, Double> deadlineMap = Map.of(0, 60.0, 1, 25.0, 2, 15.0);
+            int[] lengths = {10000, 400000, 8000, 12000, 160000, 32000, 5000, 70000, 22000, 180000, 3500, 90000, 25000, 140000, 6500};
+            int[] rams = {2000, 1000, 256, 1024, 4096, 2048, 512, 3072, 1024, 4096, 256, 2048, 1536, 3584, 512};
+            double[] deadlines = {60.0, 25.0, 15.0, 45.0, 35.0, 20.0, 18.0, 50.0, 22.0, 40.0, 12.0, 30.0, 28.0, 38.0, 14.0};
 
-            // Create cloudlets
-            cloudletList.add(new Cloudlet(0, 10000, 1, 300, 300, utilization, utilization, utilization));
-            cloudletList.add(new Cloudlet(1, 400000, 1, 300, 300, utilization, utilization, utilization));
-            cloudletList.add(new Cloudlet(2, 8000, 1, 300, 300, utilization, utilization, utilization));
-            for (Cloudlet cl : cloudletList) cl.setUserId(brokerId);
+            Map<Integer, Integer> ramMap = new HashMap<>();
+            Map<Integer, Double> deadlineMap = new HashMap<>();
+
+            for (int i = 0; i < 15; i++) {
+                Cloudlet cl = new Cloudlet(i, lengths[i], 1, 300, 300, utilization, utilization, utilization);
+                cl.setUserId(brokerId);
+                cloudletList.add(cl);
+                ramMap.put(i, rams[i]);
+                deadlineMap.put(i, deadlines[i]);
+            }
 
             // 6. Scheduler: Use PIMScheduler for profiling + assignment
             for (Cloudlet cl : cloudletList) {
@@ -120,6 +126,30 @@ public class CloudSimExample1 {
             if (predictedTime > 0) {
                 PIMScheduler.updateThreshold(actualTime, predictedTime);
             }
+        }
+
+        // Write results to CSV file
+        try (PrintWriter writer = new PrintWriter(new FileWriter("results_dynamic.csv"))) {
+            writer.println("CloudletID,VMID,Type,PredictedTime,ActualTime,Error,Threshold");
+
+            for (Cloudlet c : list) {
+                double actualTime = c.getActualCPUTime();
+                int id = c.getCloudletId();
+                double predictedTime = PIMScheduler.getPredictedTime(id);
+
+                if (predictedTime > 0) {
+                    PIMScheduler.updateThreshold(actualTime, predictedTime);
+                }
+
+                double error = (predictedTime > 0) ? Math.abs(actualTime - predictedTime) / actualTime : 0;
+                String type = (c.getVmId() == 0 || c.getVmId() == 1 || c.getVmId() == 2) ? "CPU" : "PIM";
+                double threshold = PIMScheduler.getCurrentThreshold();
+
+                writer.printf("%d,%d,%s,%.2f,%.2f,%.4f,%.5f%n",
+                        id, c.getVmId(), type, predictedTime, actualTime, error, threshold);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }

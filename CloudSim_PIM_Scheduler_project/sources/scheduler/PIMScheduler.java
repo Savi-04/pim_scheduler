@@ -6,6 +6,8 @@ import org.cloudbus.cloudsim.Vm;
 import java.util.List;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.HashMap;
+import java.util.Map;
 
 public class PIMScheduler {
 
@@ -15,6 +17,7 @@ public class PIMScheduler {
     private static final double ADJUST_STEP = 0.0005;
     private static final int ERROR_WINDOW = 10;
     private static Queue<Double> recentErrors = new LinkedList<>();
+    private static Map<Integer, Double> predictedTimes = new HashMap<>();
 
     /**
      * Classifies a job (cloudlet) based on RAM/Length ratio, deadline, and simulated 10% execution time.
@@ -28,6 +31,7 @@ public class PIMScheduler {
     public static String classifyJob(int cloudletId, int ram, long length, double deadline) {
         double ratio = (double) ram / length;
         double simulated10PercentTime = (length * 0.10) / 100000.0;  // simulate on 100K MIPS VM
+        savePredictedTime(cloudletId, simulated10PercentTime * 10); // store full predicted time
 
         Log.printLine("\n--- Profiling Cloudlet ---");
         Log.printLine("Cloudlet ID: " + cloudletId);
@@ -84,5 +88,17 @@ public class PIMScheduler {
             threshold -= ADJUST_STEP;
             Log.printLine("Threshold decreased to: " + threshold);
         }
+    }
+
+    public static void savePredictedTime(int cloudletId, double predictedTime) {
+        predictedTimes.put(cloudletId, predictedTime);
+    }
+
+    public static double getPredictedTime(int cloudletId) {
+        return predictedTimes.getOrDefault(cloudletId, -1.0);
+    }
+    
+    public static double getCurrentThreshold() {
+        return threshold;
     }
 }
