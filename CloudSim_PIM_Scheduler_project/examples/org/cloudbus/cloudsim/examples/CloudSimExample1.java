@@ -31,30 +31,43 @@ public class CloudSimExample1 {
             // CPU VMs
             vmList.add(new Vm(0, brokerId, 10000, 1, 2048, 1000, 10000, "Xen", new CloudletSchedulerSpaceShared()));
             vmList.add(new Vm(1, brokerId, 9000, 1, 2048, 1000, 10000, "Xen", new CloudletSchedulerSpaceShared()));
-            vmList.add(new Vm(2, brokerId, 11000, 1, 4096, 1000, 10000, "Xen", new CloudletSchedulerSpaceShared()));
+            vmList.add(new Vm(2, brokerId, 8000, 1, 4096, 1000, 10000, "Xen", new CloudletSchedulerSpaceShared()));
             // PIM VMs
             vmList.add(new Vm(3, brokerId, 8000, 1, 4096, 1000, 10000, "Xen", new CloudletSchedulerSpaceShared()));
             vmList.add(new Vm(4, brokerId, 7000, 1, 4096, 1000, 10000, "Xen", new CloudletSchedulerSpaceShared()));
-            vmList.add(new Vm(5, brokerId, 8500, 1, 4096, 1000, 10000, "Xen", new CloudletSchedulerSpaceShared()));
+            vmList.add(new Vm(5, brokerId, 7000, 1, 3072, 1000, 10000, "Xen", new CloudletSchedulerSpaceShared()));
             broker.submitVmList(vmList);
 
             // 5. Create Cloudlets
             List<Cloudlet> cloudletList = new ArrayList<>();
             UtilizationModel utilization = new UtilizationModelFull();
 
-            int[] lengths = {10000, 400000, 8000, 12000, 160000, 32000, 5000, 70000, 22000, 180000, 3500, 90000, 25000, 140000, 6500};
-            int[] rams = {2000, 1000, 256, 1024, 4096, 2048, 512, 3072, 1024, 4096, 256, 2048, 1536, 3584, 512};
-            double[] deadlines = {60.0, 25.0, 15.0, 45.0, 35.0, 20.0, 18.0, 50.0, 22.0, 40.0, 12.0, 30.0, 28.0, 38.0, 14.0};
+            List<Integer> lengths = new ArrayList<>();
+            List<Integer> rams = new ArrayList<>();
+            List<Double> deadlines = new ArrayList<>();
+            int numCloudlets = 300;
+
+            Random rand = new Random(42); // Seed for reproducibility
+
+            for (int i = 0; i < numCloudlets; i++) {
+                int len = 1000 + rand.nextInt(500000); // Length from 1k to 500k
+                int ram = 256 + rand.nextInt(4096);    // RAM from 256MB to ~4GB
+                double ddl = 10.0 + rand.nextDouble() * 90.0; // Deadline from 10 to 100 sec
+
+                lengths.add(len);
+                rams.add(ram);
+                deadlines.add(ddl);
+            }
 
             Map<Integer, Integer> ramMap = new HashMap<>();
             Map<Integer, Double> deadlineMap = new HashMap<>();
 
-            for (int i = 0; i < 15; i++) {
-                Cloudlet cl = new Cloudlet(i, lengths[i], 1, 300, 300, utilization, utilization, utilization);
+            for (int i = 0; i < numCloudlets; i++) {
+                Cloudlet cl = new Cloudlet(i, lengths.get(i), 1, 300, 300, utilization, utilization, utilization);
                 cl.setUserId(brokerId);
                 cloudletList.add(cl);
-                ramMap.put(i, rams[i]);
-                deadlineMap.put(i, deadlines[i]);
+                ramMap.put(i, rams.get(i));
+                deadlineMap.put(i, deadlines.get(i));
             }
 
             // 6. Scheduler: Use PIMScheduler for profiling + assignment

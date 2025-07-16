@@ -21,12 +21,6 @@ public class PIMScheduler {
 
     /**
      * Classifies a job (cloudlet) based on RAM/Length ratio, deadline, and simulated 10% execution time.
-     *
-     * @param cloudletId ID of the cloudlet
-     * @param ram        RAM requirement in MB
-     * @param length     Total length of the cloudlet (in MI)
-     * @param deadline   Deadline in seconds
-     * @return           "PIM" or "CPU"
      */
     public static String classifyJob(int cloudletId, int ram, long length, double deadline) {
         double ratio = (double) ram / length;
@@ -41,7 +35,6 @@ public class PIMScheduler {
         Log.printLine("Deadline: " + deadline + " seconds");
         Log.printLine("Simulated 10% Execution Time: " + String.format("%.2f", simulated10PercentTime) + " seconds");
 
-        // Heuristic + 10% execution guidance
         if (ratio > threshold && deadline > 30.0) {
             Log.printLine("Classification Result: PIM\n");
             return "PIM";
@@ -52,22 +45,40 @@ public class PIMScheduler {
     }
 
     /**
-     * Selects the first available VM from the list that matches the type (CPU/PIM).
-     *
-     * @param vmList  List of VMs
-     * @param decision "PIM" or "CPU"
-     * @return        The first matching VM or null
+     * Selects the lowest-energy VM from matching type (PIM or CPU).
      */
     public static Vm selectVM(List<Vm> vmList, String decision) {
+        double assumedPower = 100.0; // in watts
+        double minEnergy = Double.MAX_VALUE;
+        Vm selectedVM = null;
+
         for (Vm vm : vmList) {
             boolean isPIM = vm.getMips() < 9000;
             if ((decision.equals("PIM") && isPIM) || (decision.equals("CPU") && !isPIM)) {
-                return vm;
+                double predictedTime = 1.0; // default time if unknown
+                for (Map.Entry<Integer, Double> entry : predictedTimes.entrySet()) {
+                    predictedTime = entry.getValue();
+                    break; // just take one sample for now
+                }
+
+                double energy = predictedTime * assumedPower;
+                Log.printLine("VM ID: " + vm.getId() + " | Type: " + (isPIM ? "PIM" : "CPU") + 
+                              " | Predicted Exec Time: " + String.format("%.2f", predictedTime) + 
+                              " sec | Estimated Energy: " + String.format("%.2f", energy) + " J");
+
+                if (energy < minEnergy) {
+                    minEnergy = energy;
+                    selectedVM = vm;
+                }
             }
         }
-        return null; // No matching VM
+
+        return selectedVM;
     }
 
+    /**
+     * Updates the threshold dynamically based on prediction error feedback.
+     */
     public static void updateThreshold(double actualTime, double predictedTime) {
         double error = Math.abs(actualTime - predictedTime) / actualTime;
         recentErrors.add(error);
@@ -97,7 +108,7 @@ public class PIMScheduler {
     public static double getPredictedTime(int cloudletId) {
         return predictedTimes.getOrDefault(cloudletId, -1.0);
     }
-    
+
     public static double getCurrentThreshold() {
         return threshold;
     }

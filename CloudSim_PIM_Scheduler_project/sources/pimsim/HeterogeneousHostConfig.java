@@ -54,18 +54,18 @@ public class HeterogeneousHostConfig {
     // Helper: Generate a list of CPU Hosts with varying configurations
     public static List<Host> generateMultipleCPUHosts() {
         List<Host> cpuHosts = new ArrayList<>();
-        cpuHosts.add(createCPUHost(0, 10000, 16384)); // High-end
-        cpuHosts.add(createCPUHost(1, 8000, 8192));   // Mid-tier
-        cpuHosts.add(createCPUHost(2, 6000, 4096));   // Low-tier
+        cpuHosts.add(createCPUHost(0, 12000, 16384)); // High-end
+        cpuHosts.add(createCPUHost(1, 11000, 8192));  // Mid-tier
+        cpuHosts.add(createCPUHost(2, 10000, 4096));  // Low-tier
         return cpuHosts;
     }
 
     // Helper: Generate a list of PIM Hosts with varying configurations
     public static List<Host> generateMultiplePIMHosts() {
         List<Host> pimHosts = new ArrayList<>();
-        pimHosts.add(createPIMHost(3, 8000, 32768));  // High-end PIM
-        pimHosts.add(createPIMHost(4, 6000, 16384));  // Mid-tier
-        pimHosts.add(createPIMHost(5, 4000, 8192));   // Low-tier
+        pimHosts.add(createPIMHost(3, 9000, 32768));  // High-end PIM
+        pimHosts.add(createPIMHost(4, 8500, 16384));  // Mid-tier
+        pimHosts.add(createPIMHost(5, 8000, 8192));   // Low-tier
         return pimHosts;
     }
 }
