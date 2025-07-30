@@ -18,6 +18,7 @@ public class PIMScheduler {
     private static final int ERROR_WINDOW = 10;
     private static Queue<Double> recentErrors = new LinkedList<>();
     private static Map<Integer, Double> predictedTimes = new HashMap<>();
+    private static Map<Integer, Double> energyUsageMap = new HashMap<>();
 
     /**
      * Classifies a job (cloudlet) based on RAM/Length ratio, deadline, and simulated 10% execution time.
@@ -55,13 +56,11 @@ public class PIMScheduler {
         for (Vm vm : vmList) {
             boolean isPIM = vm.getMips() < 9000;
             if ((decision.equals("PIM") && isPIM) || (decision.equals("CPU") && !isPIM)) {
-                double predictedTime = 1.0; // default time if unknown
-                for (Map.Entry<Integer, Double> entry : predictedTimes.entrySet()) {
-                    predictedTime = entry.getValue();
-                    break; // just take one sample for now
-                }
-
+                double predictedTime = predictedTimes.getOrDefault(vm.getId(), 1.0); // Use cloudletId instead
                 double energy = predictedTime * assumedPower;
+                energyUsageMap.put(vm.getId(), energy);
+                // This assumes vm.getId() == cloudletId, which holds in current mapping logic
+
                 Log.printLine("VM ID: " + vm.getId() + " | Type: " + (isPIM ? "PIM" : "CPU") + 
                               " | Predicted Exec Time: " + String.format("%.2f", predictedTime) + 
                               " sec | Estimated Energy: " + String.format("%.2f", energy) + " J");
@@ -109,7 +108,21 @@ public class PIMScheduler {
         return predictedTimes.getOrDefault(cloudletId, -1.0);
     }
 
+    public static double getLatestPredictedTime() {
+        if (predictedTimes.isEmpty()) return -1.0;
+        int latestId = predictedTimes.keySet().stream().max(Integer::compareTo).orElse(-1);
+        return predictedTimes.getOrDefault(latestId, -1.0);
+    }
+
+    public static void storePredictedTime(int cloudletId, double predictedTime) {
+        predictedTimes.put(cloudletId, predictedTime);
+    }
+
     public static double getCurrentThreshold() {
         return threshold;
+    }
+
+    public static double getEnergyUsed(int cloudletId) {
+        return energyUsageMap.getOrDefault(cloudletId, -1.0);
     }
 }

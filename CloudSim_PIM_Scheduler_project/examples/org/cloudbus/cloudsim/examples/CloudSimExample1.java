@@ -6,6 +6,8 @@ import org.cloudbus.cloudsim.provisioners.*;
 import scheduler.PIMScheduler;
 import pimsim.HeterogeneousHostConfig;
 
+import scheduler.BaselineScheduler;
+
 import java.text.DecimalFormat;
 import java.util.*;
 import java.io.*;
@@ -70,21 +72,44 @@ public class CloudSimExample1 {
                 deadlineMap.put(i, deadlines.get(i));
             }
 
-            // 6. Scheduler: Use PIMScheduler for profiling + assignment
-            for (Cloudlet cl : cloudletList) {
-                int id = cl.getCloudletId();
-                int ram = ramMap.get(id);
-                long len = cl.getCloudletLength();
-                double ddl = deadlineMap.get(id);
+            // 6. Scheduler: Toggle between adaptive and baseline round-robin
+            boolean useAdaptiveScheduler = true; // Toggle this to false to use baseline round-robin
 
-                String decision = PIMScheduler.classifyJob(id, ram, len, ddl);
-                Vm chosenVM = PIMScheduler.selectVM(vmList, decision);
+            if (useAdaptiveScheduler) {
+                for (Cloudlet cl : cloudletList) {
+                    int id = cl.getCloudletId();
+                    int ram = ramMap.get(id);
+                    long len = cl.getCloudletLength();
+                    double ddl = deadlineMap.get(id);
 
-                if (chosenVM != null) {
-                    cl.setVmId(chosenVM.getId());
-                    Log.printLine("Assigned Cloudlet " + id + " to VM " + chosenVM.getId() + " (" + decision + ")");
-                } else {
-                    Log.printLine("No suitable VM found for Cloudlet " + id);
+                    String decision = PIMScheduler.classifyJob(id, ram, len, ddl);
+                    Vm chosenVM = PIMScheduler.selectVM(vmList, decision);
+
+                    if (chosenVM != null) {
+                        double predictedTime = PIMScheduler.getLatestPredictedTime();
+                        PIMScheduler.storePredictedTime(id, predictedTime);
+                        cl.setVmId(chosenVM.getId());
+                        Log.printLine("Assigned Cloudlet " + id + " to VM " + chosenVM.getId() + " (" + decision + ")");
+                    } else {
+                        Log.printLine("No suitable VM found for Cloudlet " + id);
+                    }
+                }
+            } else {
+                for (Cloudlet cl : cloudletList) {
+                    int id = cl.getCloudletId();
+                    int ram = ramMap.get(id);
+                    long len = cl.getCloudletLength();
+                    double ddl = deadlineMap.get(id);
+
+                    String decision = BaselineScheduler.classifyJob(id, ram, len, ddl);
+                    Vm chosenVM = BaselineScheduler.selectVM(vmList, decision);
+
+                    if (chosenVM != null) {
+                        cl.setVmId(chosenVM.getId());
+                        Log.printLine("Assigned Cloudlet " + id + " to VM " + chosenVM.getId() + " (" + decision + ")");
+                    } else {
+                        Log.printLine("No suitable VM found for Cloudlet " + id);
+                    }
                 }
             }
 
@@ -143,23 +168,19 @@ public class CloudSimExample1 {
 
         // Write results to CSV file
         try (PrintWriter writer = new PrintWriter(new FileWriter("results_dynamic.csv"))) {
-            writer.println("CloudletID,VMID,Type,PredictedTime,ActualTime,Error,Threshold");
+            writer.println("CloudletID,VMID,Type,PredictedTime,ActualTime,Error,Threshold,Energy");
 
             for (Cloudlet c : list) {
                 double actualTime = c.getActualCPUTime();
                 int id = c.getCloudletId();
                 double predictedTime = PIMScheduler.getPredictedTime(id);
-
-                if (predictedTime > 0) {
-                    PIMScheduler.updateThreshold(actualTime, predictedTime);
-                }
-
                 double error = (predictedTime > 0) ? Math.abs(actualTime - predictedTime) / actualTime : 0;
                 String type = (c.getVmId() == 0 || c.getVmId() == 1 || c.getVmId() == 2) ? "CPU" : "PIM";
                 double threshold = PIMScheduler.getCurrentThreshold();
+                double energy = actualTime * 0.1; // Placeholder: 0.1 watt per second
 
-                writer.printf("%d,%d,%s,%.2f,%.2f,%.4f,%.5f%n",
-                        id, c.getVmId(), type, predictedTime, actualTime, error, threshold);
+                writer.printf("%d,%d,%s,%.2f,%.2f,%.4f,%.5f,%.4f%n",
+                        id, c.getVmId(), type, predictedTime, actualTime, error, threshold, energy);
             }
         } catch (IOException e) {
             e.printStackTrace();
