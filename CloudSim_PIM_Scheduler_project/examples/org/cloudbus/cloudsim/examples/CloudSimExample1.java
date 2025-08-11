@@ -164,7 +164,7 @@ public class CloudSimExample1 {
             Log.printLine();
 
             double actualTime = c.getActualCPUTime();
-            int id = c.getCloudletId();
+            int id = c.getCloudletId(); //
             double predictedTime = PIMScheduler.getPredictedTime(id);
 
             if (predictedTime > 0) {
