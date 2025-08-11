@@ -12,23 +12,28 @@ import java.text.DecimalFormat;
 import java.util.*;
 import java.io.*;
 
+import static scheduler.PIMScheduler.getCloudletThreshold;
+
 public class CloudSimExample1 {
+
+    private static Map<Integer, Double> thresholdLog = new HashMap<>();
 
     public static void main(String[] args) {
         Log.printLine("Starting CloudSimExample1...");
 
         try {
-            // 1. Initialize CloudSim
+            // Initialize CloudSim
+            PIMScheduler.resetScheduler();
             CloudSim.init(1, Calendar.getInstance(), false);
 
-            // 2. Create Datacenter with CPU and PIM hosts
+            // Create Datacenter with CPU and PIM hosts
             Datacenter datacenter0 = createDatacenter("Datacenter_0");
 
-            // 3. Create Broker
+            // Create Broker
             DatacenterBroker broker = new DatacenterBroker("Broker");
             int brokerId = broker.getId();
 
-            // 4. Create VMs
+            // Create VMs
             List<Vm> vmList = new ArrayList<>();
             // CPU VMs
             vmList.add(new Vm(0, brokerId, 10000, 1, 2048, 1000, 10000, "Xen", new CloudletSchedulerSpaceShared()));
@@ -40,14 +45,14 @@ public class CloudSimExample1 {
             vmList.add(new Vm(5, brokerId, 7000, 1, 3072, 1000, 10000, "Xen", new CloudletSchedulerSpaceShared()));
             broker.submitVmList(vmList);
 
-            // 5. Create Cloudlets
+            // Create Cloudlets
             List<Cloudlet> cloudletList = new ArrayList<>();
             UtilizationModel utilization = new UtilizationModelFull();
 
             List<Integer> lengths = new ArrayList<>();
             List<Integer> rams = new ArrayList<>();
             List<Double> deadlines = new ArrayList<>();
-            int numCloudlets = 300;
+            int numCloudlets = 100; //This is number of desired cloudlets 
 
             Random rand = new Random(42); // Seed for reproducibility
 
@@ -72,8 +77,8 @@ public class CloudSimExample1 {
                 deadlineMap.put(i, deadlines.get(i));
             }
 
-            // 6. Scheduler: Toggle between adaptive and baseline round-robin
-            boolean useAdaptiveScheduler = true; // Toggle this to false to use baseline round-robin
+            // Scheduler - toggle between adaptive and baseline round-robin
+            boolean useAdaptiveScheduler = false; // Toggle this to false to use baseline round-robin
 
             if (useAdaptiveScheduler) {
                 for (Cloudlet cl : cloudletList) {
@@ -86,7 +91,8 @@ public class CloudSimExample1 {
                     Vm chosenVM = PIMScheduler.selectVM(vmList, decision);
 
                     if (chosenVM != null) {
-                        double predictedTime = PIMScheduler.getLatestPredictedTime();
+                        double predictedTime = PIMScheduler.getPredictedTime(id);
+                        Log.printLine("[DEBUG] Initial predicted time for Cloudlet " + id + ": " + predictedTime);
                         PIMScheduler.storePredictedTime(id, predictedTime);
                         cl.setVmId(chosenVM.getId());
                         Log.printLine("Assigned Cloudlet " + id + " to VM " + chosenVM.getId() + " (" + decision + ")");
@@ -113,14 +119,14 @@ public class CloudSimExample1 {
                 }
             }
 
-            // 7. Submit jobs to broker
+            // Submit jobs to broker
             broker.submitCloudletList(cloudletList);
 
-            // 8. Run Simulation
+            // Run Simulation
             CloudSim.startSimulation();
             CloudSim.stopSimulation();
 
-            // 9. Print Results
+            // Print Results
             printCloudletList(broker.getCloudletReceivedList());
             Log.printLine("CloudSimExample1 finished!");
 
@@ -162,21 +168,29 @@ public class CloudSimExample1 {
             double predictedTime = PIMScheduler.getPredictedTime(id);
 
             if (predictedTime > 0) {
+                Log.printLine("[DEBUG] Updating threshold for Cloudlet " + id +
+                        " | ActualTime: " + actualTime +
+                        " | PredictedTime: " + predictedTime);
+                double before = PIMScheduler.getCurrentThreshold();
                 PIMScheduler.updateThreshold(actualTime, predictedTime);
+                double after = PIMScheduler.getCurrentThreshold();
+                thresholdLog.put(id, after);
+                Log.printLine("[THRESHOLD BEFORE UPDATE] " + before);
+                Log.printLine("[THRESHOLD AFTER UPDATE] " + after);
             }
         }
 
         // Write results to CSV file
-        try (PrintWriter writer = new PrintWriter(new FileWriter("results_dynamic.csv"))) {
+        try (PrintWriter writer = new PrintWriter(new FileWriter("results_static.csv"))) {
             writer.println("CloudletID,VMID,Type,PredictedTime,ActualTime,Error,Threshold,Energy");
 
             for (Cloudlet c : list) {
                 double actualTime = c.getActualCPUTime();
                 int id = c.getCloudletId();
                 double predictedTime = PIMScheduler.getPredictedTime(id);
+                double threshold = thresholdLog.getOrDefault(id, PIMScheduler.getCurrentThreshold());
                 double error = (predictedTime > 0) ? Math.abs(actualTime - predictedTime) / actualTime : 0;
                 String type = (c.getVmId() == 0 || c.getVmId() == 1 || c.getVmId() == 2) ? "CPU" : "PIM";
-                double threshold = PIMScheduler.getCurrentThreshold();
                 double energy = actualTime * 0.1; // Placeholder: 0.1 watt per second
 
                 writer.printf("%d,%d,%s,%.2f,%.2f,%.4f,%.5f,%.4f%n",
